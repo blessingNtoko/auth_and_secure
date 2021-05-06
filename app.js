@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption');
+const md5 = require('md5');
 
 const app = express();
 const port = process.env.PORT || 4177;
@@ -35,11 +35,6 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-userSchema.plugin(encrypt, {
-    secret: process.env.SECRET,
-    encryptedFields: ['password']
-});
-
 const User = mongoose.model('User', userSchema);
 
 // SECTION: Get routes
@@ -60,7 +55,7 @@ app.get('/register', (req, res) => {
 
 app.post('/register', (req, res) => {
     const username = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
     User.findOne({
         email: username
@@ -91,7 +86,7 @@ app.post('/register', (req, res) => {
 
 app.post('/login', (req, res) => {
     const username = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
     User.findOne({
         email: username
