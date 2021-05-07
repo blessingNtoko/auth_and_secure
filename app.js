@@ -9,7 +9,7 @@ const passLocalMong = require('passport-local-mongoose');
 
 const app = express();
 const port = process.env.PORT || 4177;
-const saltRounds = 10;
+// const saltRounds = 10;
 
 app.use(express.urlencoded({
     extended: true
@@ -37,13 +37,12 @@ mongoose.connect('mongodb://localhost:27017/userDB', {
 });
 
 const userSchema = new mongoose.Schema({
-    email: {
+    username: {
         type: String,
         required: true
     },
     password: {
         type: String,
-        required: true
     }
 });
 
@@ -69,15 +68,67 @@ app.get('/register', (req, res) => {
     res.render('register');
 });
 
+app.get('/secrets', (req, res) => {
+    if (req.isAuthenticated()) {
+        console.log('User is authenticated');
+        res.render('secrets');
+    } else {
+        res.redirect('/login');
+    }
+});
+
+app.get('/logout', (req, res) => {
+    req.logout();
+    res.redirect('/');
+});
+
 // SECTION: Post routes
 
 app.post('/register', (req, res) => {
+    console.log('Request body ->', req.body);
+    const userName = req.body.username;
+    const passWord = req.body.password;
 
+    User.register({
+        username: userName,
+    }, passWord, (err, user) => {
+        console.log('User ->', user);
+        if (!err) {
+            passport.authenticate('local')(req, res, () => {
+                res.redirect('/secrets');
+            });
+            // let authenticate = User.authenticate();
+            // authenticate(userName, passWord, (error, result) => {
+            //     if (!error) {
+            //         console.log('Authentication Results ->', result);
+
+            //     } else {
+            //         console.log('Authentication error ->', error);
+            //     }
+            // });
+        } else {
+            console.log('Register Error ->', err);
+            res.redirect('/register');
+        }
+    });
 
 });
 
 app.post('/login', (req, res) => {
+    const user = new User({
+        username: req.body.username,
+        password: req.body.password
+    });
 
+    req.login(user, (err) => {
+        if (!err) {
+            passport.authenticate('local')(req, res, () => {
+                res.redirect('/secrets');
+            })
+        } else {
+            console.log('Login error ->', err);
+        }
+    })
 });
 
 // SECTION: Listening
