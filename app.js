@@ -3,10 +3,11 @@ require('dotenv').config();
 const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const port = process.env.PORT || 4177;
+const saltRounds = 10;
 
 app.use(express.urlencoded({
     extended: true
@@ -55,49 +56,54 @@ app.get('/register', (req, res) => {
 
 app.post('/register', (req, res) => {
     const username = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
 
-    User.findOne({
-        email: username
-    }, (err, result) => {
-        if (!err) {
-            if (result) {
-                res.send('Email already exists');
+    bcrypt.hash(password, saltRounds, (err, hash) => {
+        User.findOne({
+            email: username
+        }, (err, result) => {
+            if (!err) {
+                if (result) {
+                    res.send('Email already exists');
+                } else {
+                    const newUser = new User({
+                        email: username,
+                        password: hash
+                    });
+
+                    newUser.save(err => {
+                        if (!err) {
+                            console.log('User registered successfully');
+                            res.render('secrets');
+                        } else {
+                            console.log(err);
+                        }
+                    });
+                }
             } else {
-                const newUser = new User({
-                    email: username,
-                    password: password
-                });
-
-                newUser.save(err => {
-                    if (!err) {
-                        console.log('User registered successfully');
-                        res.render('secrets');
-                    } else {
-                        console.log(err);
-                    }
-                });
+                console.log('Error in register route ->', err);
             }
-        } else {
-            console.log('Error in register route ->', err);
-        }
-    })
+        });
+    });
+
 });
 
 app.post('/login', (req, res) => {
     const username = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
 
     User.findOne({
         email: username
-    }, (err, result) => {
+    }, (err, data) => {
         if (!err) {
-            if (result) {
-                if (password === result.password) {
-                    res.render('secrets');
-                } else {
-                    res.send('Password entered is incorrect, please try again')
-                }
+            if (data) {
+                bcrypt.compare(password, data.password, (err, result) => {
+                    if (result) {
+                        res.render('secrets');
+                    } else {
+                        res.send('Password entered is incorrect, please try again');
+                    }
+                });
             } else {
                 console.log('User not found');
             }
