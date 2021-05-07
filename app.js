@@ -97,15 +97,6 @@ app.post('/register', (req, res) => {
             passport.authenticate('local')(req, res, () => {
                 res.redirect('/secrets');
             });
-            // let authenticate = User.authenticate();
-            // authenticate(userName, passWord, (error, result) => {
-            //     if (!error) {
-            //         console.log('Authentication Results ->', result);
-
-            //     } else {
-            //         console.log('Authentication error ->', error);
-            //     }
-            // });
         } else {
             console.log('Register Error ->', err);
             res.redirect('/register');
