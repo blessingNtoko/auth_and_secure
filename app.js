@@ -43,7 +43,8 @@ const userSchema = new mongoose.Schema({
     username: String,
     password: String,
     googleId: String,
-    facebookId: String
+    facebookId: String,
+    secrets: String
 });
 
 userSchema.plugin(passLocalMong);
@@ -80,9 +81,10 @@ passport.use(new GoogleStrategy({
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID,
     clientSecret: process.env.FACEBOOK_APP_SECRET,
-    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+    callbackURL: "http://localhost:4177/auth/facebook/secrets"
   },
   function(accessToken, refreshToken, profile, cb) {
+    console.log('User Profile ->', profile);
     User.findOrCreate({ facebookId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -101,8 +103,8 @@ app.get('/auth/google',
     })
 );
 
-app.get('/auth/google',
-    passport.authenticate('google', {
+app.get('/auth/facebook',
+    passport.authenticate('facebook', {
         scope: ['public_profile']
     })
 );
@@ -132,13 +134,25 @@ app.get('/register', (req, res) => {
 });
 
 app.get('/secrets', (req, res) => {
+    User.find({"secrets": {$ne: null}}, (err, users) => {
+        if (!err) {
+            res.render('secrets', {
+                usersWithSecrets: users
+            });
+        } else {
+            console.log(err);
+        }
+    });
+});
+
+app.get('/submit', (req, res) => {
     if (req.isAuthenticated()) {
         console.log('User is authenticated');
-        res.render('secrets');
+        res.render('submit');
     } else {
         res.redirect('/login');
     }
-});
+})
 
 app.get('/logout', (req, res) => {
     req.logout();
@@ -183,6 +197,25 @@ app.post('/login', (req, res) => {
             console.log('Login error ->', err);
         }
     })
+});
+
+app.post('/submit', (req, res) => {
+    const submittedSecret = req.body.secret;
+
+    console.log('Current User ->', req.user);
+    User.findOne({_id: req.user._id}, (err, user) => {
+        console.log('Data ->', user);
+        if (!err) {
+            if (user) {
+                user.secrets = submittedSecret;
+                user.save(() => {
+                    res.redirect('/secrets');
+                })
+            } else {
+                console.log(err);
+            }
+        }
+    });
 });
 
 // SECTION: Listening
